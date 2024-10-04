@@ -9,10 +9,10 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-
     // Método para registrar un nuevo usuario
     public function register(Request $request)
     {
+        \Log::info('Datos del registro:', $request->all());
         // Validar los datos del formulario
         $request->validate([
             'email' => 'required|string|email|max:255|unique:users',
@@ -32,7 +32,6 @@ class AuthController extends Controller
         return response()->json(['success' => true], 200);
     }
 
-
     // Método para iniciar sesión
     public function login(Request $request)
     {
@@ -51,7 +50,7 @@ class AuthController extends Controller
             return response()->json(['success' => true], 200);
         }
 
-        // Si la autenticación falla, redirigir de nuevo al formulario de inicio de sesión con un mensaje de error
+        // Si la autenticación falla, devolver mensaje de error
         return response()->json(['error' => 'Las credenciales no coinciden con nuestros registros.'], 401);
     }
 
@@ -61,7 +60,6 @@ class AuthController extends Controller
         Auth::logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return response()->json(['success' => true], 200);

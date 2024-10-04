@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <title>Panel de Administración</title>
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 </head>
@@ -10,8 +12,8 @@
     <header>
         <h1>Panel de Administración</h1>
         <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar sesión</a>
-        <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
-            @csrf
+        <form id="logout-form">
+
         </form>
     </header>
     <main>

@@ -96,10 +96,7 @@ document.getElementById('floatingCart').addEventListener('click', function() {
 
 // Consolidar la función de cerrar ventanas emergentes
 function closePopup(popupId) {
-    const popup = document.getElementById(popupId);
-    if (popup) {
-        popup.style.display = 'none';
-    }
+    document.getElementById(popupId).style.display = "none";
 }
 
 // Evento para cerrar ventanas emergentes con botón de cerrar
@@ -260,10 +257,12 @@ document.getElementById('logout').addEventListener('click', async function() {
         alert('Error al cerrar sesión');
     }
 });
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 // Envío de formulario de registro
 document.getElementById('registerForm').addEventListener('submit', async function(event) {
     event.preventDefault();
+
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
     const passwordConfirmation = document.getElementById('registerPasswordConfirmation').value;
@@ -273,9 +272,13 @@ document.getElementById('registerForm').addEventListener('submit', async functio
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token para Laravel
+                'X-CSRF-TOKEN': csrfToken // Incluimos el token CSRF
             },
-            body: JSON.stringify({ email, password, password_confirmation: passwordConfirmation })
+            body: JSON.stringify({
+                email: email,
+                password: password,
+                password_confirmation: passwordConfirmation
+            })
         });
 
         if (response.ok) {
@@ -296,26 +299,22 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+
     try {
         const response = await fetch('/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // CSRF token para Laravel
+                'X-CSRF-TOKEN': csrfToken // Incluimos el token CSRF
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
         });
 
         if (response.ok) {
             alert('Inicio de sesión exitoso');
-
-            // Ocultar botones de inicio de sesión y registro
-            document.getElementById('authButtons').style.display = 'none';
-
-            // Mostrar perfil de usuario
-            document.getElementById('userProfile').style.display = 'flex';
-
-            // Cerrar la ventana emergente de inicio de sesión
             closePopup('loginPopup');
         } else {
             const errorData = await response.json();

@@ -37,8 +37,8 @@
                     </div>
                     <div id="userMenu" class="dropdown-content">
                         <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
-                        <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
-                            @csrf
+                        <form id="logout-form">
+
                         </form>
                     </div>
                 </div>
@@ -74,14 +74,12 @@
             <span class="close" onclick="closePopup('loginPopup')">&times;</span>
             <h2>Iniciar Sesión</h2>
             <form id="loginForm">
-                @csrf
                 <label for="loginEmail">Correo electrónico:</label>
                 <input type="email" id="loginEmail" required>
                 <label for="loginPassword">Contraseña:</label>
                 <input type="password" id="loginPassword" required>
                 <button type="submit">Entrar</button>
             </form>
-
         </div>
     </div>
 

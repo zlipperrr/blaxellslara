@@ -5,7 +5,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AdminController;
 
-
 Route::get('/', function () {
     return view('index');
 });
@@ -25,4 +24,3 @@ Route::group(['middleware' => 'admin', 'prefix' => 'admin'], function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
     Route::post('/update-role/{id}', [AdminController::class, 'updateRole'])->name('admin.updateRole');
 });
-
