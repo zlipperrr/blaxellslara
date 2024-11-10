@@ -17,10 +17,18 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 // Ruta de cierre de sesión
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->name('logout')
+    ->middleware('auth');
 
 // Ruta para admin de pagina
 Route::group(['middleware' => 'admin', 'prefix' => 'admin'], function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
     Route::post('/update-role/{id}', [AdminController::class, 'updateRole'])->name('admin.updateRole');
 });
+
+// Nueva ruta para verificar código
+Route::post('/verificar-codigo', [OrderController::class, 'verifyCode']);
+
+// Nueva ruta para actualizar pedido
+Route::post('/actualizar-pedido', [OrderController::class, 'updateOrder']);

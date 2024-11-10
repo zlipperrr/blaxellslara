@@ -29,4 +29,49 @@ class OrderController extends Controller
             return response()->json(['message' => 'Error al procesar el pedido: ' . $e->getMessage()], 500);
         }
     }
+
+    public function verifyCode(Request $request)
+    {
+        $code = $request->input('code');
+        $order = Order::where('code', $code)->first();
+
+        if ($order) {
+            try {
+                // Decodificar y devolver los productos directamente sin volver a codificar
+                return response()->json([
+                    'valid' => true,
+                    'products' => json_decode($order->products)
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Error al procesar los productos'
+                ]);
+            }
+        }
+
+        return response()->json([
+            'valid' => false
+        ]);
+    }
+
+    public function updateOrder(Request $request)
+    {
+        $data = $request->validate([
+            'code' => 'required|string',
+            'products' => 'required|array',
+        ]);
+
+        try {
+            $order = Order::where('code', $data['code'])->first();
+            if ($order) {
+                $order->products = json_encode($data['products']);
+                $order->save();
+                return response()->json(['message' => 'Pedido actualizado correctamente.'], 200);
+            }
+            return response()->json(['message' => 'Pedido no encontrado.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al actualizar el pedido: ' . $e->getMessage()], 500);
+        }
+    }
 }

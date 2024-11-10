@@ -36,9 +36,9 @@
                         <img src="{{ asset('images/user-avatar.png') }}" alt="User Avatar" id="userAvatar">
                     </div>
                     <div id="userMenu" class="dropdown-content">
-                        <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
-                        <form id="logout-form">
-
+                        <form id="logout-form" action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit">Cerrar Sesión</button>
                         </form>
                     </div>
                 </div>
@@ -73,11 +73,12 @@
         <div class="popup-content">
             <span class="close" onclick="closePopup('loginPopup')">&times;</span>
             <h2>Iniciar Sesión</h2>
-            <form id="loginForm">
+            <form id="loginForm" method="POST" action="{{ route('login') }}">
+                @csrf
                 <label for="loginEmail">Correo electrónico:</label>
-                <input type="email" id="loginEmail" required>
+                <input type="email" id="loginEmail" name="email" required>
                 <label for="loginPassword">Contraseña:</label>
-                <input type="password" id="loginPassword" required>
+                <input type="password" id="loginPassword" name="password" required>
                 <button type="submit">Entrar</button>
             </form>
         </div>
@@ -88,13 +89,16 @@
         <div class="popup-content">
             <span class="close" onclick="closePopup('registerPopup')">&times;</span>
             <h2>Registrarse</h2>
-            <form id="registerForm">
+            <form id="registerForm" method="POST" action="{{ route('register') }}">
+                @csrf
+                <label for="registerName">Nombre:</label>
+                <input type="text" id="registerName" name="name" required>
                 <label for="registerEmail">Correo electrónico:</label>
-                <input type="email" id="registerEmail" required>
+                <input type="email" id="registerEmail" name="email" required>
                 <label for="registerPassword">Contraseña:</label>
-                <input type="password" id="registerPassword" required>
+                <input type="password" id="registerPassword" name="password" required>
                 <label for="registerPasswordConfirmation">Confirmar contraseña:</label>
-                <input type="password" id="registerPasswordConfirmation" required>
+                <input type="password" id="registerPasswordConfirmation" name="password_confirmation" required>
                 <button type="submit">Registrar</button>
             </form>
         </div>

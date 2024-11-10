@@ -46,4 +46,24 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function isUser()
+    {
+        return $this->role === 'user';
+    }
+
+    public function isGuest()
+    {
+        return $this->role === 'guest';
+    }
+
+    public function getRoleName()
+    {
+        return match($this->role) {
+            'admin' => 'Administrador',
+            'user' => 'Usuario',
+            'guest' => 'Invitado',
+            default => 'Desconocido'
+        };
+    }
 }

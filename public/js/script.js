@@ -40,7 +40,8 @@ function displayProducts(page) {
 // Carrito
 let cartItems = [];
 
-function addToCart(productName, quantity, price) {
+// Modificar la función addToCart para mantener actualizado el pedido
+async function addToCart(productName, quantity, price) {
     const product = {
         name: productName,
         quantity: quantity,
@@ -48,7 +49,40 @@ function addToCart(productName, quantity, price) {
     };
     cartItems.push(product);
     updateCartCount();
+
+    // Si hay un código activo, actualizar el pedido en el servidor
+    const activeCode = localStorage.getItem('activeOrderCode');
+    if (activeCode) {
+        try {
+            await updateOrder(activeCode, cartItems);
+        } catch (error) {
+            console.error('Error al actualizar el pedido:', error);
+        }
+    }
+
     alert(`Añadido ${quantity} de ${productName} al carrito.`);
+}
+
+async function updateOrder(code, products) {
+    try {
+        const response = await fetch('/actualizar-pedido', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                code: code,
+                products: products
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Error al actualizar el pedido');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 // Añadir evento click a los botones de "Añadir al carrito"
@@ -73,14 +107,7 @@ function updateCartCount() {
 // Carrito en popup
 document.getElementById('floatingCart').addEventListener('click', function() {
     const cartPopup = document.getElementById('cartPopup');
-    const cartItemsList = document.getElementById('cartItemsList');
-    cartItemsList.innerHTML = ''; // Limpiar contenido previo
-
-    cartItems.forEach(item => {
-        const itemElement = document.createElement('li');
-        itemElement.textContent = `${item.quantity} ${item.name} - ${item.price}`;
-        cartItemsList.appendChild(itemElement);
-    });
+    updateCartDisplay();
 
     // Agregar botón de proceder al pago si no está presente
     if (!document.getElementById('checkoutBtn')) {
@@ -95,8 +122,14 @@ document.getElementById('floatingCart').addEventListener('click', function() {
 });
 
 // Consolidar la función de cerrar ventanas emergentes
-function closePopup(popupId) {
+function closePopup(popupId, clearCart = true) {
     document.getElementById(popupId).style.display = "none";
+    // Solo limpiar el código activo cuando se cierra el popup de código inicial
+    if (popupId === 'codePopup' && clearCart) {
+        clearActiveOrder();
+    }
+    // No limpiar el código cuando se cierra el chat
+    // Remover la limpieza cuando se cierra chatPopup
 }
 
 // Evento para cerrar ventanas emergentes con botón de cerrar
@@ -202,30 +235,147 @@ for (let i = 0; i < 10; i++) {
 return uniqueCode;
 }
 
-// Mostrar popup con código y opción de copiar
+// Modificar la función showCodePopup
 function showCodePopup(uniqueCode) {
-// Crear la ventana emergente para mostrar el código
-const codePopup = document.createElement('div');
-codePopup.classList.add('popup');
-codePopup.id = 'codePopup';
-codePopup.innerHTML = `
-    <div class="popup-content">
-        <span class="close" onclick="closePopup('codePopup')">&times;</span>
-        <h2>Tu Código de Pedido</h2>
-        <p>Código: <span id="orderCode">${uniqueCode}</span></p>
-        <button id="copyCodeBtn">Copiar Código</button>
-    </div>
-`;
-document.body.appendChild(codePopup);
-showPopup('codePopup');
+    const codePopup = document.createElement('div');
+    codePopup.classList.add('popup');
+    codePopup.id = 'codePopup';
+    codePopup.innerHTML = `
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('codePopup', false)">&times;</span>
+            <h2>Tu Código de Pedido</h2>
+            <div class="code-container">
+                <span id="orderCode">${uniqueCode}</span>
+                <button id="copyCodeBtn">Copiar Código</button>
+            </div>
+            <div class="payment-buttons">
+                <button id="onlinePaymentBtn">Pago en Línea</button>
+                <button id="localPaymentBtn">Pago Local</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(codePopup);
+    showPopup('codePopup');
 
-// Añadir funcionalidad para copiar el código
-document.getElementById('copyCodeBtn').addEventListener('click', function() {
-    const codeText = document.getElementById('orderCode').textContent;
-    navigator.clipboard.writeText(codeText).then(() => {
-        alert('Código copiado al portapapeles');
+    // Guardar el código activo en localStorage
+    localStorage.setItem('activeOrderCode', uniqueCode);
+
+    // Eventos para los botones
+    document.getElementById('copyCodeBtn').addEventListener('click', function() {
+        const codeText = document.getElementById('orderCode').textContent;
+        navigator.clipboard.writeText(codeText).then(() => {
+            alert('Código copiado al portapapeles');
+        });
     });
-});
+
+    document.getElementById('onlinePaymentBtn').addEventListener('click', function() {
+        closePopup('codePopup', false); // No limpiar el carrito al cerrar
+        showPaymentPopup();
+    });
+
+    document.getElementById('localPaymentBtn').addEventListener('click', function() {
+        closePopup('codePopup', false); // No limpiar el carrito al cerrar
+        showLocalPaymentPopup();
+    });
+}
+
+// ...existing code...
+
+function showLocalPaymentPopup() {
+    const localPaymentPopup = document.createElement('div');
+    localPaymentPopup.classList.add('popup');
+    localPaymentPopup.id = 'localPaymentPopup';
+    localPaymentPopup.innerHTML = `
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('localPaymentPopup', false)">&times;</span>
+            <h2>Verificar Código de Pedido</h2>
+            <div class="code-verify-container">
+                <input type="text" id="verifyCodeInput" placeholder="Ingrese el código del pedido">
+                <button id="verifyCodeBtn">Verificar</button>
+            </div>
+            <p id="codeError" class="error-message" style="display: none;">Código Inválido</p>
+        </div>
+    `;
+    document.body.appendChild(localPaymentPopup);
+    showPopup('localPaymentPopup');
+
+    document.getElementById('verifyCodeBtn').addEventListener('click', async function() {
+        const code = document.getElementById('verifyCodeInput').value;
+        try {
+            const response = await fetch('/verificar-codigo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ code })
+            });
+
+            const data = await response.json();
+            if (data.valid) {
+                closePopup('localPaymentPopup');
+                // Usar cartItems en lugar de data.products para mostrar el carrito actual
+                showChatInterface(code, cartItems);
+                // Guardar el código activo
+                localStorage.setItem('activeOrderCode', code);
+            } else {
+                document.getElementById('codeError').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('codeError').style.display = 'none';
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+}
+
+function showChatInterface(code, products) {
+    // Eliminar popup anterior si existe
+    const existingPopup = document.getElementById('chatPopup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
+
+    const chatPopup = document.createElement('div');
+    chatPopup.classList.add('popup');
+    chatPopup.id = 'chatPopup';
+    chatPopup.innerHTML = `
+        <div class="popup-content chat-popup">
+            <span class="close" onclick="closePopup('chatPopup', false)">&times;</span>
+            <div class="chat-container">
+                <div class="order-details">
+                    <h3>Detalles del Pedido</h3>
+                    <div class="order-items">
+                        ${cartItems.map(item => `
+                            <div class="order-item">
+                                <span>${item.quantity} ${item.name}</span>
+                                <span>${item.price}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button id="backToCartBtn" class="back-to-cart">Volver al Carrito</button>
+                </div>
+                <div class="chat-interface">
+                    <div class="chat-messages" id="chatMessages">
+                        <p class="chat-info">Chat con el administrador</p>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="messageInput" placeholder="Escriba su mensaje...">
+                        <button onclick="sendMessage()">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(chatPopup);
+    showPopup('chatPopup');
+
+    // Agregar evento al botón de volver al carrito
+    document.getElementById('backToCartBtn').addEventListener('click', function() {
+        closePopup('chatPopup', false);
+        document.getElementById('floatingCart').click();
+    });
 }
 
 // Mostrar/ocultar popup de login/register
@@ -260,68 +410,60 @@ document.getElementById('logout').addEventListener('click', async function() {
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 // Envío de formulario de registro
-document.getElementById('registerForm').addEventListener('submit', async function(event) {
-    event.preventDefault();
-
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-    const passwordConfirmation = document.getElementById('registerPasswordConfirmation').value;
-
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
     try {
         const response = await fetch('/register', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken // Incluimos el token CSRF
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({
-                email: email,
-                password: password,
-                password_confirmation: passwordConfirmation
-            })
+            body: formData
         });
 
+        const data = await response.json();
+        
         if (response.ok) {
-            alert('Registro exitoso');
-            closePopup('registerPopup');
+            window.location.href = '/'; // Redireccionar a la página principal
+            window.location.reload(true); // Forzar recarga para actualizar el estado de la sesión
         } else {
-            const errorData = await response.json();
-            alert('Error en el registro: ' + errorData.message);
+            alert('Error en el registro: ' + (data.message || 'Error desconocido'));
         }
     } catch (error) {
-        alert('Error de red: ' + error.message);
+        console.error('Error:', error);
+        alert('Error en el registro');
     }
 });
 
 // Envío del formulario de inicio de sesión
-document.getElementById('loginForm').addEventListener('submit', async function(event) {
-    event.preventDefault();
-
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
     try {
         const response = await fetch('/login', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken // Incluimos el token CSRF
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({
-                email: email,
-                password: password
-            })
+            body: formData
         });
 
+        const data = await response.json();
+        
         if (response.ok) {
-            alert('Inicio de sesión exitoso');
-            closePopup('loginPopup');
+            window.location.href = '/'; // Redireccionar a la página principal
+            window.location.reload(true); // Forzar recarga para actualizar el estado de la sesión
         } else {
-            const errorData = await response.json();
-            alert('Error en el inicio de sesión: ' + errorData.message);
+            alert('Error en el inicio de sesión: ' + (data.message || 'Credenciales incorrectas'));
         }
     } catch (error) {
-        alert('Error de red: ' + error.message);
+        console.error('Error:', error);
+        alert('Error en el inicio de sesión');
     }
 });
 
@@ -361,3 +503,164 @@ document.getElementById('banners').addEventListener('wheel', (event) => {
 });
 
 startAutoScroll();
+
+// ...existing code...
+document.getElementById('logout-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    try {
+        const response = await fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = data.redirect;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cerrar sesión');
+    }
+});
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message || 'Error en el inicio de sesión');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error en el inicio de sesión');
+    }
+});
+
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message || 'Error en el registro');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error en el registro');
+    }
+});
+// ...existing code...
+
+function showPaymentPopup() {
+    const paymentPopup = document.createElement('div');
+    paymentPopup.classList.add('popup');
+    paymentPopup.id = 'paymentPopup';
+    paymentPopup.innerHTML = `
+        <div class="popup-content">
+            <span class="close" onclick="closePopup('paymentPopup')">&times;</span>
+            <h2>Información de Pago</h2>
+            <form class="payment-form" id="paymentForm">
+                <input type="text" placeholder="Nombre y apellido" required>
+                <input type="text" placeholder="Dirección completa" required>
+                <input type="text" placeholder="Número de celular" required>
+                <div class="card-details">
+                    <input type="text" placeholder="Número de tarjeta" required>
+                    <input type="text" placeholder="MM/YY" required>
+                    <input type="text" placeholder="CVV" required>
+                </div>
+                <button type="submit">Confirmar Pago</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(paymentPopup);
+    showPopup('paymentPopup');
+
+    // Evento para procesar el pago
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        alert('Pago procesado correctamente');
+        closePopup('paymentPopup', true); // Aquí sí queremos limpiar el carrito
+        cartItems = []; // Limpiar carrito solo después de un pago exitoso
+        updateCartCount();
+    });
+}
+
+// Agregar función para eliminar productos del carrito
+async function removeFromCart(index) {
+    cartItems.splice(index, 1);
+    updateCartCount();
+    updateCartDisplay();
+
+    // Si hay un código activo, actualizar el pedido en el servidor
+    const activeCode = localStorage.getItem('activeOrderCode');
+    if (activeCode) {
+        try {
+            await updateOrder(activeCode, cartItems);
+            
+            // Actualizar la interfaz del chat si está abierta
+            const chatPopup = document.getElementById('chatPopup');
+            if (chatPopup && chatPopup.style.display === 'block') {
+                showChatInterface(activeCode, cartItems);
+            }
+        } catch (error) {
+            console.error('Error al actualizar el pedido:', error);
+        }
+    }
+}
+
+// Agregar función para limpiar el código activo
+function clearActiveOrder() {
+    localStorage.removeItem('activeOrderCode');
+    cartItems = [];
+    updateCartCount();
+}
+
+// Modificar la función que muestra el carrito
+function updateCartDisplay() {
+    const cartItemsList = document.getElementById('cartItemsList');
+    if (!cartItemsList) return;
+    
+    cartItemsList.innerHTML = '';
+    cartItems.forEach((item, index) => {
+        const itemElement = document.createElement('li');
+        itemElement.innerHTML = `
+            <div class="cart-item">
+                <span class="cart-item-details">
+                    <strong>${item.quantity}</strong> ${item.name} - ${item.price}
+                </span>
+                <button class="remove-item" onclick="removeFromCart(${index})" title="Eliminar producto">×</button>
+            </div>
+        `;
+        cartItemsList.appendChild(itemElement);
+    });
+}
